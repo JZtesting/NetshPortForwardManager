@@ -1,0 +1,28 @@
+{
+  "exportDate": "2024-06-21 10:30:00",
+  "version": "1.0",
+  "totalRules": 3,
+  "rules": [
+    {
+      "listenPort": "8080",
+      "listenAddress": "0.0.0.0",
+      "forwardPort": "80",
+      "forwardAddress": "192.168.1.100",
+      "protocol": "V4ToV4"
+    },
+    {
+      "listenPort": "3389",
+      "listenAddress": "localhost",
+      "forwardPort": "3389",
+      "forwardAddress": "192.168.1.200",
+      "protocol": "V4ToV4"
+    },
+    {
+      "listenPort": "8443",
+      "listenAddress": "0.0.0.0",
+      "forwardPort": "443",
+      "forwardAddress": "10.0.0.50",
+      "protocol": "V4ToV4"
+    }
+  ]
+}
