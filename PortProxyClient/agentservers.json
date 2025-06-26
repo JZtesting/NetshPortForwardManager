@@ -1,0 +1,62 @@
+[
+  {
+    "id": "30ff147c-a227-4047-acad-1e18a22d14d0",
+    "name": "Desk",
+    "agentUrl": "http://127.0.0.1:8080",
+    "secretKey": "ChangeThisToASecureRandomKey123456789",
+    "description": "Desk Agent",
+    "siloId": "8706c3a3-e06d-48f2-b150-41028ab0f1e7",
+    "environment": "Production",
+    "status": 2,
+    "lastSeen": "2025-06-25T16:53:10.5628319-07:00",
+    "version": "1.0.0-mock",
+    "ruleCount": 0,
+    "tags": [],
+    "metadata": {}
+  },
+  {
+    "id": "1ded514c-37b5-43a0-a640-2964c4ea4d1b",
+    "name": "PRX1",
+    "agentUrl": "http://10.212.1.1:8080",
+    "secretKey": "ffa34158e12a4f798d3b2cc734081fd9",
+    "description": "",
+    "siloId": "8706c3a3-e06d-48f2-b150-41028ab0f1e7",
+    "environment": "Production",
+    "status": 0,
+    "lastSeen": "0001-01-01T00:00:00",
+    "version": "",
+    "ruleCount": 0,
+    "tags": [],
+    "metadata": {}
+  },
+  {
+    "id": "19ad9204-e775-42d2-88ae-9a9b00d26296",
+    "name": "PRX2",
+    "agentUrl": "http://10.212.2.5",
+    "secretKey": "ff4420769c9548ac8db9901e4599f9ba",
+    "description": "",
+    "siloId": "d23811e5-3c98-4009-b856-838eb46a4fc4",
+    "environment": "Production",
+    "status": 0,
+    "lastSeen": "0001-01-01T00:00:00",
+    "version": "",
+    "ruleCount": 0,
+    "tags": [],
+    "metadata": {}
+  },
+  {
+    "id": "9fc58766-e2a7-4863-bcd8-cfa97132296e",
+    "name": "IHPRX1",
+    "agentUrl": "http://10.212.45.67",
+    "secretKey": "e6da2ea71ffa42d0afb2226bb95352ee",
+    "description": "",
+    "siloId": "d63f66db-ca63-439c-87bb-f46cff16b3e4",
+    "environment": "Test",
+    "status": 0,
+    "lastSeen": "0001-01-01T00:00:00",
+    "version": "",
+    "ruleCount": 0,
+    "tags": [],
+    "metadata": {}
+  }
+]

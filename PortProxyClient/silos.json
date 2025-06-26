@@ -1,0 +1,44 @@
+[
+  {
+    "id": "8706c3a3-e06d-48f2-b150-41028ab0f1e7",
+    "name": "Natcad Prod A",
+    "description": "Primary production silo",
+    "dataCenter": "DC1",
+    "role": 1,
+    "status": 3,
+    "lastHealthCheck": "2025-06-25T17:17:22.2598952-07:00",
+    "properties": {},
+    "environments": [
+      "Test",
+      "Production"
+    ]
+  },
+  {
+    "id": "d23811e5-3c98-4009-b856-838eb46a4fc4",
+    "name": "Natcad Prod B",
+    "description": "Backup production silo",
+    "dataCenter": "DC2",
+    "role": 2,
+    "status": 3,
+    "lastHealthCheck": "2025-06-25T17:17:22.292395-07:00",
+    "properties": {},
+    "environments": [
+      "Test",
+      "Production"
+    ]
+  },
+  {
+    "id": "d63f66db-ca63-439c-87bb-f46cff16b3e4",
+    "name": "IH Test A",
+    "description": "",
+    "dataCenter": "Denver",
+    "role": 1,
+    "status": 0,
+    "lastHealthCheck": "2025-06-25T17:14:35.2228263-07:00",
+    "properties": {},
+    "environments": [
+      "Test",
+      "Production"
+    ]
+  }
+]

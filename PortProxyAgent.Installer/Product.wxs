@@ -1,0 +1,151 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Wix xmlns="http://schemas.microsoft.com/wix/2006/wi"
+     xmlns:util="http://schemas.microsoft.com/wix/UtilExtension">
+  
+  <!-- Product definition -->
+  <Product Id="*" 
+           Name="PortProxy Agent" 
+           Language="1033" 
+           Version="1.0.0.0" 
+           Manufacturer="Your Company" 
+           UpgradeCode="B7C8D9E0-F1A2-4B5C-8D6E-9F0A1B2C3D4E">
+    
+    <Package InstallerVersion="200" 
+             Compressed="yes" 
+             InstallScope="perMachine" 
+             Description="PortProxy Agent Windows Service"
+             Manufacturer="Your Company" />
+
+    <!-- Media and cabinet -->
+    <MediaTemplate EmbedCab="yes" />
+
+    <!-- Major upgrade rules -->
+    <MajorUpgrade DowngradeErrorMessage="A newer version of [ProductName] is already installed." />
+
+    <!-- Custom actions for service management -->
+    <Binary Id="CustomActions" SourceFile="$(var.PortProxyAgent.TargetDir)PortProxyAgent.exe" />
+    
+    <!-- Properties for configuration -->
+    <Property Id="AGENT_NAME" Value="[COMPUTERNAME]" />
+    <Property Id="AGENT_PORT" Value="8080" />
+    <Property Id="SECRET_KEY" Value="" />
+    <Property Id="CENTRAL_MANAGER_URL" Value="" />
+    <Property Id="ENVIRONMENT" Value="Production" />
+    <Property Id="SILO_ID" Value="" />
+    <Property Id="AUTO_REGISTER" Value="false" />
+
+    <!-- Install directory structure -->
+    <Directory Id="TARGETDIR" Name="SourceDir">
+      <Directory Id="ProgramFilesFolder">
+        <Directory Id="CompanyFolder" Name="PortProxy">
+          <Directory Id="INSTALLFOLDER" Name="Agent">
+            
+            <!-- Main application files -->
+            <Component Id="MainExecutable" Guid="A1B2C3D4-E5F6-4A5B-8C9D-0E1F2A3B4C5D">
+              <File Id="PortProxyAgentExe" 
+                    Source="$(var.PortProxyAgent.TargetPath)" 
+                    KeyPath="yes" />
+              
+              <!-- Install as Windows Service -->
+              <ServiceInstall Id="PortProxyAgentService"
+                              Type="ownProcess"
+                              Name="PortProxyAgent"
+                              DisplayName="PortProxy Agent"
+                              Description="Manages network port forwarding rules remotely"
+                              Start="auto"
+                              Account="LocalSystem"
+                              ErrorControl="normal"
+                              Arguments='--contentRoot "[INSTALLFOLDER]" --urls "http://*:[AGENT_PORT]"' />
+              
+              <ServiceControl Id="StartPortProxyAgentService"
+                              Name="PortProxyAgent"
+                              Start="install"
+                              Stop="both"
+                              Remove="uninstall"
+                              Wait="yes" />
+            </Component>
+
+            <!-- Configuration files -->
+            <Component Id="ConfigurationFiles" Guid="B2C3D4E5-F6A7-4B5C-9D0E-1F2A3B4C5D6E">
+              <File Id="AppSettingsJson" 
+                    Source="$(var.PortProxyAgent.ProjectDir)appsettings.json" 
+                    KeyPath="yes" />
+              
+              <!-- Production config with user values -->
+              <File Id="AppSettingsProdJson" 
+                    Source="appsettings.Production.template.json" 
+                    Name="appsettings.Production.json" />
+            </Component>
+
+            <!-- Dependencies -->
+            <Component Id="Dependencies" Guid="C3D4E5F6-A7B8-4C5D-0E1F-2A3B4C5D6E7F">
+              <File Id="MicrosoftExtensionsHostingWindowsServices" 
+                    Source="$(var.PortProxyAgent.TargetDir)Microsoft.Extensions.Hosting.WindowsServices.dll" 
+                    KeyPath="yes" />
+            </Component>
+
+          </Directory>
+        </Directory>
+      </Directory>
+
+      <!-- Start Menu shortcuts -->
+      <Directory Id="ProgramMenuFolder">
+        <Directory Id="ApplicationProgramsFolder" Name="PortProxy Agent">
+          <Component Id="ApplicationShortcut" Guid="D4E5F6A7-B8C9-4D5E-1F2A-3B4C5D6E7F8A">
+            <Shortcut Id="ApplicationStartMenuShortcut"
+                      Name="PortProxy Agent Configuration"
+                      Description="Configure PortProxy Agent"
+                      Target="[INSTALLFOLDER]PortProxyAgent.exe"
+                      Arguments="--configure"
+                      WorkingDirectory="INSTALLFOLDER" />
+            
+            <util:InternetShortcut Id="AgentHealthCheck"
+                                   Name="Agent Health Check"
+                                   Target="http://localhost:[AGENT_PORT]/health" />
+            
+            <RemoveFolder Id="ApplicationProgramsFolder" On="uninstall" />
+            <RegistryValue Root="HKCU" 
+                           Key="Software\PortProxy\Agent" 
+                           Name="Installed" 
+                           Type="integer" 
+                           Value="1" 
+                           KeyPath="yes" />
+          </Component>
+        </Directory>
+      </Directory>
+    </Directory>
+
+    <!-- Feature definition -->
+    <Feature Id="ProductFeature" Title="PortProxy Agent" Level="1">
+      <ComponentRef Id="MainExecutable" />
+      <ComponentRef Id="ConfigurationFiles" />
+      <ComponentRef Id="Dependencies" />
+      <ComponentRef Id="ApplicationShortcut" />
+    </Feature>
+
+    <!-- Custom actions for configuration -->
+    <CustomAction Id="GenerateSecretKey" 
+                  BinaryKey="CustomActions" 
+                  DllEntry="GenerateSecretKey" 
+                  Execute="immediate" 
+                  Return="check" />
+    
+    <CustomAction Id="UpdateConfiguration" 
+                  BinaryKey="CustomActions" 
+                  DllEntry="UpdateConfiguration" 
+                  Execute="deferred" 
+                  Impersonate="no" 
+                  Return="check" />
+
+    <!-- Install sequence -->
+    <InstallExecuteSequence>
+      <Custom Action="GenerateSecretKey" After="CostFinalize">NOT Installed</Custom>
+      <Custom Action="UpdateConfiguration" After="InstallFiles">NOT Installed</Custom>
+    </InstallExecuteSequence>
+
+    <!-- UI definition -->
+    <UIRef Id="WixUI_FeatureTree" />
+    <UIRef Id="WixUI_ErrorProgressText" />
+
+  </Product>
+</Wix>

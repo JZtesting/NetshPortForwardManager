@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Wix xmlns="http://schemas.microsoft.com/wix/2006/wi"
+     xmlns:util="http://schemas.microsoft.com/wix/UtilExtension">
+  
+  <Fragment>
+    <!-- Custom UI for agent configuration -->
+    <UI Id="AgentConfigurationUI">
+      
+      <!-- Agent Configuration Dialog -->
+      <Dialog Id="AgentConfigDlg" Width="370" Height="270" Title="PortProxy Agent Configuration">
+        
+        <!-- Agent Name -->
+        <Control Id="AgentNameLabel" Type="Text" X="20" Y="20" Width="100" Height="17" TabSkip="no" Text="Agent Name:" />
+        <Control Id="AgentNameEdit" Type="Edit" X="120" Y="18" Width="200" Height="18" Property="AGENT_NAME" TabSkip="no" />
+        
+        <!-- Port -->
+        <Control Id="PortLabel" Type="Text" X="20" Y="45" Width="100" Height="17" TabSkip="no" Text="Port:" />
+        <Control Id="PortEdit" Type="Edit" X="120" Y="43" Width="200" Height="18" Property="AGENT_PORT" TabSkip="no" />
+        
+        <!-- Secret Key -->
+        <Control Id="SecretKeyLabel" Type="Text" X="20" Y="70" Width="100" Height="17" TabSkip="no" Text="Secret Key:" />
+        <Control Id="SecretKeyEdit" Type="Edit" X="120" Y="68" Width="200" Height="18" Property="SECRET_KEY" TabSkip="no" />
+        <Control Id="GenerateKeyButton" Type="PushButton" X="325" Y="68" Width="40" Height="18" Text="Generate" TabSkip="no">
+          <Publish Event="DoAction" Value="GenerateSecretKey">1</Publish>
+        </Control>
+        
+        <!-- Central Manager URL -->
+        <Control Id="CentralManagerLabel" Type="Text" X="20" Y="95" Width="100" Height="17" TabSkip="no" Text="Central Manager:" />
+        <Control Id="CentralManagerEdit" Type="Edit" X="120" Y="93" Width="200" Height="18" Property="CENTRAL_MANAGER_URL" TabSkip="no" />
+        
+        <!-- Environment -->
+        <Control Id="EnvironmentLabel" Type="Text" X="20" Y="120" Width="100" Height="17" TabSkip="no" Text="Environment:" />
+        <Control Id="EnvironmentCombo" Type="ComboBox" X="120" Y="118" Width="200" Height="18" Property="ENVIRONMENT" ComboList="yes" TabSkip="no">
+          <ComboBox Property="ENVIRONMENT">
+            <ListItem Text="Production" Value="Production" />
+            <ListItem Text="Staging" Value="Staging" />
+            <ListItem Text="Development" Value="Development" />
+          </ComboBox>
+        </Control>
+        
+        <!-- Silo ID -->
+        <Control Id="SiloIdLabel" Type="Text" X="20" Y="145" Width="100" Height="17" TabSkip="no" Text="Silo ID:" />
+        <Control Id="SiloIdEdit" Type="Edit" X="120" Y="143" Width="200" Height="18" Property="SILO_ID" TabSkip="no" />
+        
+        <!-- Auto Register -->
+        <Control Id="AutoRegisterCheck" Type="CheckBox" X="20" Y="170" Width="200" Height="17" Property="AUTO_REGISTER" CheckBoxValue="true" Text="Auto-register with Central Manager" TabSkip="no" />
+        
+        <!-- Navigation buttons -->
+        <Control Id="Back" Type="PushButton" X="180" Y="243" Width="56" Height="17" Text="&amp;Back" TabSkip="no">
+          <Publish Event="NewDialog" Value="LicenseAgreementDlg">1</Publish>
+        </Control>
+        
+        <Control Id="Next" Type="PushButton" X="236" Y="243" Width="56" Height="17" Default="yes" Text="&amp;Next" TabSkip="no">
+          <Publish Event="NewDialog" Value="VerifyReadyDlg">1</Publish>
+        </Control>
+        
+        <Control Id="Cancel" Type="PushButton" X="304" Y="243" Width="56" Height="17" Cancel="yes" Text="Cancel" TabSkip="no">
+          <Publish Event="SpawnDialog" Value="CancelDlg">1</Publish>
+        </Control>
+        
+      </Dialog>
+      
+    </UI>
+    
+    <!-- Insert the configuration dialog into the install sequence -->
+    <InstallUISequence>
+      <Show Dialog="AgentConfigDlg" After="LicenseAgreementDlg">NOT Installed</Show>
+    </InstallUISequence>
+    
+  </Fragment>
+  
+</Wix>

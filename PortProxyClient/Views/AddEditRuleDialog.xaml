@@ -1,0 +1,372 @@
+<Window x:Class="PortProxyClient.Views.AddEditRuleDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:local="clr-namespace:PortProxyClient.Models"
+        Title="Port Forward Rule" Height="680" Width="550"
+        WindowStartupLocation="CenterOwner" ResizeMode="NoResize"
+        Background="{StaticResource BackgroundBrush}"
+        WindowStyle="None"
+        AllowsTransparency="True">
+    <WindowChrome.WindowChrome>
+        <WindowChrome CaptionHeight="0" 
+                      ResizeBorderThickness="0" 
+                      CornerRadius="0"
+                      GlassFrameThickness="0"/>
+    </WindowChrome.WindowChrome>
+    
+    <Window.Resources>
+        <Geometry x:Key="InfoIcon">M11,9H13V7H11M12,20C7.59,20 4,16.41 4,12C4,7.59 7.59,4 12,4C16.41,4 20,7.59 20,12C20,16.41 16.41,20 12,20M12,2A10,10 0 0,0 2,12A10,10 0 0,0 12,22A10,10 0 0,0 22,12A10,10 0 0,0 12,2M11,17H13V11H11V17Z</Geometry>
+        <Geometry x:Key="CloseIcon">M19,6.41L17.59,5L12,10.59L6.41,5L5,6.41L10.59,12L5,17.59L6.41,19L12,13.41L17.59,19L19,17.59L13.41,12L19,6.41Z</Geometry>
+    </Window.Resources>
+    
+    <Border BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" Background="{StaticResource BackgroundBrush}">
+        <Grid>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+                <RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
+
+            <!-- Custom Title Bar -->
+            <Border Grid.Row="0" Background="{StaticResource SurfaceBrush}" 
+                    MouseLeftButtonDown="TitleBar_MouseLeftButtonDown">
+                <Grid Height="32">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    
+                    <TextBlock Grid.Column="0" 
+                               Text="Port Forward Rule" 
+                               FontSize="12"
+                               VerticalAlignment="Center"
+                               Margin="12,0"
+                               Foreground="{StaticResource TextPrimaryBrush}"/>
+                    
+                    <Button Grid.Column="1" 
+                            Width="46" Height="32"
+                            Click="CloseButton_Click"
+                            WindowChrome.IsHitTestVisibleInChrome="True">
+                        <Button.Style>
+                            <Style TargetType="Button" BasedOn="{StaticResource IconButton}">
+                                <Style.Triggers>
+                                    <Trigger Property="IsMouseOver" Value="True">
+                                        <Setter Property="Background" Value="{StaticResource ErrorBrush}"/>
+                                    </Trigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Button.Style>
+                        <Path Data="{StaticResource CloseIcon}" 
+                              Fill="{StaticResource TextSecondaryBrush}" 
+                              Width="12" Height="12" 
+                              Stretch="Uniform"/>
+                    </Button>
+                </Grid>
+            </Border>
+
+            <!-- Header -->
+            <Border Grid.Row="1" Background="{StaticResource SurfaceBrush}" 
+                    BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,0,0,1">
+                <StackPanel Margin="24,20">
+                    <TextBlock Text="{Binding WindowTitle}" 
+                               FontSize="20" 
+                               FontWeight="Medium" 
+                               Foreground="{StaticResource TextPrimaryBrush}"/>
+                    <TextBlock Text="Configure port forwarding parameters" 
+                               FontSize="14" 
+                               Foreground="{StaticResource TextSecondaryBrush}" 
+                               Margin="0,4,0,0"/>
+                </StackPanel>
+            </Border>
+
+            <!-- Form Content -->
+            <ScrollViewer Grid.Row="2" VerticalScrollBarVisibility="Auto">
+            <StackPanel Margin="24,24">
+                <!-- Rule Information Card -->
+                <Border Style="{StaticResource Card}" Margin="0,0,0,16">
+                    <StackPanel>
+                        <TextBlock Text="RULE INFORMATION" 
+                                   FontSize="12" 
+                                   FontWeight="SemiBold" 
+                                   Foreground="{StaticResource TextSecondaryBrush}" 
+                                   Margin="0,0,0,16"/>
+                        
+                        <!-- Description -->
+                        <StackPanel Margin="0,0,0,16">
+                            <Label Content="Description*" Style="{StaticResource ModernLabel}"/>
+                            <TextBox Style="{StaticResource ModernTextBox}"
+                                     Text="{Binding Description, UpdateSourceTrigger=PropertyChanged}"
+                                     ToolTip="Required: Brief description of this forwarding rule"/>
+                        </StackPanel>
+                        
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="16"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            
+                            <!-- Category -->
+                            <StackPanel Grid.Column="0">
+                                <Label Content="Category" Style="{StaticResource ModernLabel}"/>
+                                <ComboBox Style="{StaticResource ModernComboBox}"
+                                          Text="{Binding Category, UpdateSourceTrigger=PropertyChanged}"
+                                          IsEditable="True"
+                                          Height="40">
+                                    <ComboBoxItem Content="Web"/>
+                                    <ComboBoxItem Content="Database"/>
+                                    <ComboBoxItem Content="Admin"/>
+                                    <ComboBoxItem Content="API"/>
+                                    <ComboBoxItem Content="Monitoring"/>
+                                </ComboBox>
+                            </StackPanel>
+                            
+                            <!-- Tags -->
+                            <StackPanel Grid.Column="2">
+                                <Label Content="Tags" Style="{StaticResource ModernLabel}"/>
+                                <TextBox Style="{StaticResource ModernTextBox}"
+                                         Text="{Binding TagsText, UpdateSourceTrigger=PropertyChanged}"
+                                         ToolTip="Optional: Comma-separated tags for organization"/>
+                            </StackPanel>
+                        </Grid>
+                    </StackPanel>
+                </Border>
+
+                <!-- Listen Configuration Card -->
+                <Border Style="{StaticResource Card}" Margin="0,0,0,16">
+                    <StackPanel>
+                        <TextBlock Text="LISTEN CONFIGURATION" 
+                                   FontSize="12" 
+                                   FontWeight="SemiBold" 
+                                   Foreground="{StaticResource TextSecondaryBrush}" 
+                                   Margin="0,0,0,16"/>
+                        
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="16"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            
+                            <!-- Listen Address -->
+                            <StackPanel Grid.Column="0">
+                                <Label Content="Listen Address" Style="{StaticResource ModernLabel}"/>
+                                <TextBox Style="{StaticResource ModernTextBox}"
+                                         Text="{Binding ListenAddress, UpdateSourceTrigger=PropertyChanged}"
+                                         ToolTip="IP address to listen on (0.0.0.0 for all interfaces)"/>
+                            </StackPanel>
+                            
+                            <!-- Listen Port -->
+                            <StackPanel Grid.Column="2">
+                                <Label Content="Listen Port" Style="{StaticResource ModernLabel}"/>
+                                <TextBox Style="{StaticResource ModernTextBox}"
+                                         Text="{Binding ListenPort, UpdateSourceTrigger=PropertyChanged}"
+                                         ToolTip="Port number to listen on (1-65535)"/>
+                            </StackPanel>
+                        </Grid>
+                    </StackPanel>
+                </Border>
+
+                <!-- Forward Configuration Card -->
+                <Border Style="{StaticResource Card}" Margin="0,0,0,16">
+                    <StackPanel>
+                        <TextBlock Text="FORWARD CONFIGURATION" 
+                                   FontSize="12" 
+                                   FontWeight="SemiBold" 
+                                   Foreground="{StaticResource TextSecondaryBrush}" 
+                                   Margin="0,0,0,16"/>
+                        
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="16"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            
+                            <!-- Forward Address -->
+                            <StackPanel Grid.Column="0">
+                                <Label Content="Forward Address" Style="{StaticResource ModernLabel}"/>
+                                <TextBox Style="{StaticResource ModernTextBox}"
+                                         Text="{Binding ForwardAddress, UpdateSourceTrigger=PropertyChanged}"
+                                         ToolTip="Target IP address to forward traffic to"/>
+                            </StackPanel>
+                            
+                            <!-- Forward Port -->
+                            <StackPanel Grid.Column="2">
+                                <Label Content="Forward Port" Style="{StaticResource ModernLabel}"/>
+                                <TextBox Style="{StaticResource ModernTextBox}"
+                                         Text="{Binding ForwardPort, UpdateSourceTrigger=PropertyChanged}"
+                                         ToolTip="Target port number (1-65535)"/>
+                            </StackPanel>
+                        </Grid>
+                    </StackPanel>
+                </Border>
+
+                <!-- Server Selection Card -->
+                <Border Style="{StaticResource Card}" Margin="0,0,0,16">
+                    <StackPanel>
+                        <TextBlock Text="SERVER CONFIGURATION" 
+                                   FontSize="12" 
+                                   FontWeight="SemiBold" 
+                                   Foreground="{StaticResource TextSecondaryBrush}" 
+                                   Margin="0,0,0,16"/>
+                        
+                        <!-- Agent Server Selection -->
+                        <StackPanel Margin="0,0,0,16">
+                            <Label Content="Agent Server (executes command)*" Style="{StaticResource ModernLabel}"/>
+                            <ComboBox Style="{StaticResource ModernComboBox}"
+                                      ItemsSource="{Binding AvailableAgentServers}"
+                                      SelectedItem="{Binding SelectedAgentServer}"
+                                      Height="40">
+                                <ComboBox.ItemTemplate>
+                                    <DataTemplate>
+                                        <StackPanel Orientation="Horizontal">
+                                            <Ellipse Width="8" Height="8" 
+                                                     Fill="{Binding StatusColor}"
+                                                     Margin="0,0,8,0"/>
+                                            <TextBlock Text="{Binding Name}" 
+                                                       FontWeight="Medium"
+                                                       Margin="0,0,8,0"/>
+                                            <TextBlock Text="{Binding AgentUrl}" 
+                                                       FontSize="12"
+                                                       Foreground="{StaticResource TextSecondaryBrush}"/>
+                                        </StackPanel>
+                                    </DataTemplate>
+                                </ComboBox.ItemTemplate>
+                            </ComboBox>
+                        </StackPanel>
+                        
+                        <!-- Target Server Selection -->
+                        <StackPanel>
+                            <Label Content="Target Server (destination)*" Style="{StaticResource ModernLabel}"/>
+                            <ComboBox Style="{StaticResource ModernComboBox}"
+                                      ItemsSource="{Binding AvailableTargetServers}"
+                                      SelectedItem="{Binding SelectedTargetServer}"
+                                      Height="40">
+                                <ComboBox.ItemTemplate>
+                                    <DataTemplate>
+                                        <StackPanel Orientation="Horizontal">
+                                            <Ellipse Width="8" Height="8" 
+                                                     Fill="{Binding DnsStatusColor}"
+                                                     Margin="0,0,8,0"/>
+                                            <TextBlock Text="{Binding Name}" 
+                                                       FontWeight="Medium"
+                                                       Margin="0,0,8,0"/>
+                                            <TextBlock Text="{Binding DnsName}" 
+                                                       FontSize="12"
+                                                       Foreground="{StaticResource TextSecondaryBrush}"/>
+                                        </StackPanel>
+                                    </DataTemplate>
+                                </ComboBox.ItemTemplate>
+                            </ComboBox>
+                        </StackPanel>
+                        
+                        <TextBlock Text="Agent server executes the netsh command, target server is the destination for forwarded traffic" 
+                                   FontSize="12" 
+                                   Foreground="{StaticResource TextSecondaryBrush}" 
+                                   Margin="0,8,0,0"/>
+                    </StackPanel>
+                </Border>
+
+                <!-- Protocol Selection Card -->
+                <Border Style="{StaticResource Card}" Margin="0,0,0,16">
+                    <StackPanel>
+                        <Label Content="Protocol Type" Style="{StaticResource ModernLabel}"/>
+                        <ComboBox Style="{StaticResource ModernComboBox}"
+                                  SelectedItem="{Binding Protocol}"
+                                  Height="40">
+                            <ComboBox.Items>
+                                <x:Static Member="local:ProtocolType.V4ToV4"/>
+                                <x:Static Member="local:ProtocolType.V4ToV6"/>
+                                <x:Static Member="local:ProtocolType.V6ToV4"/>
+                                <x:Static Member="local:ProtocolType.V6ToV6"/>
+                            </ComboBox.Items>
+                        </ComboBox>
+                        <TextBlock Text="IPv4 to IPv4 is the most common configuration" 
+                                   FontSize="12" 
+                                   Foreground="{StaticResource TextSecondaryBrush}" 
+                                   Margin="0,8,0,0"/>
+                    </StackPanel>
+                </Border>
+
+                <!-- Command Preview Card -->
+                <Border Style="{StaticResource Card}">
+                    <StackPanel>
+                        <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
+                            <Path Data="{StaticResource InfoIcon}" 
+                                  Fill="{StaticResource TextSecondaryBrush}" 
+                                  Width="16" Height="16" 
+                                  Stretch="Uniform" 
+                                  Margin="0,0,8,0"/>
+                            <TextBlock Text="COMMAND PREVIEW" 
+                                       FontSize="12" 
+                                       FontWeight="SemiBold" 
+                                       Foreground="{StaticResource TextSecondaryBrush}"/>
+                        </StackPanel>
+                        
+                        <Border Background="{StaticResource BackgroundBrush}" 
+                                CornerRadius="4" 
+                                Padding="12">
+                            <TextBox Text="{Binding PreviewCommand}"
+                                     IsReadOnly="True" 
+                                     TextWrapping="Wrap"
+                                     Background="Transparent"
+                                     BorderThickness="0"
+                                     FontFamily="Consolas"
+                                     FontSize="13"
+                                     Foreground="{StaticResource TextPrimaryBrush}"/>
+                        </Border>
+                    </StackPanel>
+                </Border>
+
+                <!-- Validation Message -->
+                <Border Visibility="{Binding ValidationVisibility}" 
+                        Background="#FFEBEE" 
+                        CornerRadius="6" 
+                        Padding="12" 
+                        Margin="0,16,0,0">
+                    <TextBlock Text="{Binding ValidationMessage}"
+                               Foreground="{StaticResource ErrorBrush}"
+                               TextWrapping="Wrap"
+                               FontSize="13"/>
+                </Border>
+            </StackPanel>
+            </ScrollViewer>
+
+            <!-- Action Buttons -->
+            <Border Grid.Row="3" 
+                Background="{StaticResource SurfaceBrush}" 
+                BorderBrush="{StaticResource BorderBrush}" 
+                BorderThickness="0,1,0,0">
+            <Grid Margin="24,16">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                
+                <TextBlock Grid.Column="0" 
+                           Text="Press Enter to confirm, Escape to cancel" 
+                           FontSize="12" 
+                           Foreground="{StaticResource TextSecondaryBrush}" 
+                           VerticalAlignment="Center"/>
+                
+                <StackPanel Grid.Column="1" Orientation="Horizontal">
+                    <Button Content="Cancel" 
+                            Style="{StaticResource SecondaryButton}" 
+                            Width="100"
+                            Click="CancelButton_Click" 
+                            IsCancel="True" 
+                            Margin="0,0,8,0"/>
+                    <Button Content="Create Rule" 
+                            Style="{StaticResource ModernButton}" 
+                            Width="120"
+                            Click="OkButton_Click" 
+                            IsDefault="True"
+                            IsEnabled="{Binding IsValid}"/>
+                </StackPanel>
+            </Grid>
+            </Border>
+        </Grid>
+    </Border>
+</Window>

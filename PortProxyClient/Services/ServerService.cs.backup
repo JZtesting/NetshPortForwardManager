@@ -1,0 +1,544 @@
+using System;
+using System.Collections.Generic;
+using System.Collections.ObjectModel;
+using System.ComponentModel;
+using System.IO;
+using System.Linq;
+using System.Text.Json;
+using System.Threading.Tasks;
+using NetshPortForwardManager.Models;
+
+namespace NetshPortForwardManager.Services
+{
+    public class ServerService : INotifyPropertyChanged
+    {
+        private readonly string _agentServerConfigPath = "agentservers.json";
+        private readonly string _targetServerConfigPath = "targetservers.json";
+        private readonly string _siloConfigPath = "silos.json";
+        private readonly string _legacyServerConfigPath = "servers.json"; // For migration
+        private readonly DnsService _dnsService;
+        
+        private static readonly JsonSerializerOptions JsonOptions = new()
+        {
+            WriteIndented = true,
+            PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+        };
+
+        public ObservableCollection<AgentServer> AgentServers { get; private set; }
+        public ObservableCollection<TargetServer> TargetServers { get; private set; }
+        public ObservableCollection<Silo> Silos { get; private set; }
+
+        // Legacy property for backward compatibility
+        [Obsolete("Use AgentServers instead")]
+        public ObservableCollection<Server> Servers => new ObservableCollection<Server>();
+
+        public event PropertyChangedEventHandler? PropertyChanged;
+        public event EventHandler<AgentServerEventArgs>? AgentServerAdded;
+        public event EventHandler<AgentServerEventArgs>? AgentServerUpdated;
+        public event EventHandler<AgentServerEventArgs>? AgentServerDeleted;
+        public event EventHandler<TargetServerEventArgs>? TargetServerAdded;
+        public event EventHandler<TargetServerEventArgs>? TargetServerUpdated;
+        public event EventHandler<TargetServerEventArgs>? TargetServerDeleted;
+        public event EventHandler<SiloEventArgs>? SiloAdded;
+        public event EventHandler<SiloEventArgs>? SiloUpdated;
+        public event EventHandler<SiloEventArgs>? SiloDeleted;
+
+        // Legacy events for backward compatibility
+        [Obsolete("Use AgentServerAdded instead")]
+        public event EventHandler<ServerEventArgs>? ServerAdded;
+        [Obsolete("Use AgentServerUpdated instead")]
+        public event EventHandler<ServerEventArgs>? ServerUpdated;
+        [Obsolete("Use AgentServerDeleted instead")]
+        public event EventHandler<ServerEventArgs>? ServerDeleted;
+
+        public ServerService(DnsService? dnsService = null)
+        {
+            _dnsService = dnsService ?? new DnsService();
+            AgentServers = new ObservableCollection<AgentServer>();
+            TargetServers = new ObservableCollection<TargetServer>();
+            Silos = new ObservableCollection<Silo>();
+            
+            AgentServers.CollectionChanged += (s, e) => OnPropertyChanged(nameof(AgentServers));
+            TargetServers.CollectionChanged += (s, e) => OnPropertyChanged(nameof(TargetServers));
+            Silos.CollectionChanged += (s, e) => OnPropertyChanged(nameof(Silos));
+        }
+
+        #region Agent Server Management
+
+        public async Task<bool> AddAgentServerAsync(AgentServer agentServer)
+        {
+            if (server == null || !server.IsValid())
+                return false;
+
+            // Ensure unique ID
+            if (string.IsNullOrWhiteSpace(server.Id))
+                server.Id = Guid.NewGuid().ToString();
+            
+            if (Servers.Any(s => s.Id == server.Id))
+                return false;
+
+            // Resolve DNS if not already resolved
+            if (string.IsNullOrWhiteSpace(server.ResolvedIp) && !string.IsNullOrWhiteSpace(server.DnsName))
+            {
+                var dnsResult = await _dnsService.ResolveDnsAsync(server.DnsName);
+                if (dnsResult.Success)
+                {
+                    server.ResolvedIp = dnsResult.ResolvedIp;
+                }
+            }
+
+            Servers.Add(server);
+            ServerAdded?.Invoke(this, new ServerEventArgs(server));
+            
+            // Update silo relationships if server is assigned to a silo
+            if (!string.IsNullOrWhiteSpace(server.SiloId))
+            {
+                await UpdateSiloHealthAsync(server.SiloId);
+            }
+            
+            await SaveServersAsync();
+            return true;
+        }
+
+        public async Task<bool> UpdateServerAsync(Server server)
+        {
+            if (server == null || !server.IsValid())
+                return false;
+
+            var existingServer = Servers.FirstOrDefault(s => s.Id == server.Id);
+            if (existingServer == null)
+                return false;
+
+            // Store old silo ID before updating
+            var oldSiloId = existingServer.SiloId;
+
+            // Update properties
+            existingServer.Name = server.Name;
+            existingServer.DnsName = server.DnsName;
+            existingServer.Description = server.Description;
+            existingServer.SiloId = server.SiloId;
+            existingServer.Environment = server.Environment;
+            existingServer.PartnerServerId = server.PartnerServerId;
+            existingServer.IsActive = server.IsActive;
+            existingServer.Tags.Clear();
+            existingServer.Tags.AddRange(server.Tags);
+            existingServer.Metadata.Clear();
+            foreach (var kvp in server.Metadata)
+                existingServer.Metadata[kvp.Key] = kvp.Value;
+
+            // Re-resolve DNS if DNS name changed
+            if (!string.IsNullOrWhiteSpace(existingServer.DnsName))
+            {
+                var dnsResult = await _dnsService.ResolveDnsAsync(existingServer.DnsName);
+                if (dnsResult.Success)
+                {
+                    existingServer.ResolvedIp = dnsResult.ResolvedIp;
+                }
+            }
+
+            ServerUpdated?.Invoke(this, new ServerEventArgs(existingServer));
+            
+            // Update silo relationships for both old and new silo assignments
+            if (!string.IsNullOrWhiteSpace(oldSiloId) && oldSiloId != server.SiloId)
+            {
+                await UpdateSiloHealthAsync(oldSiloId);
+            }
+            if (!string.IsNullOrWhiteSpace(existingServer.SiloId))
+            {
+                await UpdateSiloHealthAsync(existingServer.SiloId);
+            }
+            
+            await SaveServersAsync();
+            return true;
+        }
+
+        public async Task<bool> DeleteServerAsync(string serverId)
+        {
+            var server = Servers.FirstOrDefault(s => s.Id == serverId);
+            if (server == null)
+                return false;
+
+            // Remove from any silos
+            foreach (var silo in Silos)
+            {
+                silo.Servers.RemoveAll(s => s.Id == serverId);
+            }
+
+            // Clear partner relationships
+            var partnerServer = Servers.FirstOrDefault(s => s.PartnerServerId == serverId);
+            if (partnerServer != null)
+            {
+                partnerServer.PartnerServerId = string.Empty;
+            }
+
+            Servers.Remove(server);
+            ServerDeleted?.Invoke(this, new ServerEventArgs(server));
+            
+            await SaveServersAsync();
+            await SaveSilosAsync();
+            return true;
+        }
+
+        public Server? GetServer(string serverId)
+        {
+            return Servers.FirstOrDefault(s => s.Id == serverId);
+        }
+
+        public List<Server> GetServersBySilo(string siloId)
+        {
+            return Servers.Where(s => s.SiloId == siloId).ToList();
+        }
+
+        public async Task<ServerHealthResult> CheckServerHealthAsync(string serverId)
+        {
+            var server = GetServer(serverId);
+            if (server == null)
+            {
+                return new ServerHealthResult
+                {
+                    ServerId = serverId,
+                    IsHealthy = false,
+                    Error = "Server not found"
+                };
+            }
+
+            var healthResult = await _dnsService.CheckServerHealthAsync(server);
+            
+            // Update server status based on health check
+            server.Status = healthResult.IsHealthy ? ServerStatus.Online : 
+                           healthResult.DnsResolvable ? ServerStatus.Warning : 
+                           ServerStatus.Offline;
+            server.LastChecked = healthResult.CheckedAt;
+            server.ResolvedIp = healthResult.ResolvedIp;
+
+            return healthResult;
+        }
+
+        #endregion
+
+        #region Silo Management
+
+        public async Task<bool> AddSiloAsync(Silo silo)
+        {
+            if (silo == null || !silo.IsValid())
+                return false;
+
+            // Ensure unique ID
+            if (string.IsNullOrWhiteSpace(silo.Id))
+                silo.Id = Guid.NewGuid().ToString();
+            
+            if (Silos.Any(s => s.Id == silo.Id))
+                return false;
+
+            Silos.Add(silo);
+            SiloAdded?.Invoke(this, new SiloEventArgs(silo));
+            
+            await SaveSilosAsync();
+            return true;
+        }
+
+        public async Task<bool> UpdateSiloAsync(Silo silo)
+        {
+            if (silo == null || !silo.IsValid())
+                return false;
+
+            var existingSilo = Silos.FirstOrDefault(s => s.Id == silo.Id);
+            if (existingSilo == null)
+                return false;
+
+            // Update properties
+            existingSilo.Name = silo.Name;
+            existingSilo.Description = silo.Description;
+            existingSilo.DataCenter = silo.DataCenter;
+            existingSilo.Role = silo.Role;
+            existingSilo.Properties.Clear();
+            foreach (var kvp in silo.Properties)
+                existingSilo.Properties[kvp.Key] = kvp.Value;
+            existingSilo.Environments.Clear();
+            existingSilo.Environments.AddRange(silo.Environments);
+
+            SiloUpdated?.Invoke(this, new SiloEventArgs(existingSilo));
+            await SaveSilosAsync();
+            return true;
+        }
+
+        public async Task<bool> DeleteSiloAsync(string siloId)
+        {
+            var silo = Silos.FirstOrDefault(s => s.Id == siloId);
+            if (silo == null)
+                return false;
+
+            // Remove silo reference from all servers
+            foreach (var server in Servers.Where(s => s.SiloId == siloId))
+            {
+                server.SiloId = string.Empty;
+            }
+
+            Silos.Remove(silo);
+            SiloDeleted?.Invoke(this, new SiloEventArgs(silo));
+            
+            await SaveServersAsync(); // Save servers to update SiloId references
+            await SaveSilosAsync();
+            return true;
+        }
+
+        public Silo? GetSilo(string siloId)
+        {
+            return Silos.FirstOrDefault(s => s.Id == siloId);
+        }
+
+        public async Task<bool> AssignServerToSiloAsync(string serverId, string siloId)
+        {
+            var server = GetServer(serverId);
+            var silo = GetSilo(siloId);
+            
+            if (server == null || silo == null)
+                return false;
+
+            // Remove from current silo if any
+            if (!string.IsNullOrWhiteSpace(server.SiloId))
+            {
+                var currentSilo = GetSilo(server.SiloId);
+                currentSilo?.Servers.RemoveAll(s => s.Id == serverId);
+            }
+
+            // Assign to new silo
+            server.SiloId = siloId;
+            if (!silo.Servers.Any(s => s.Id == serverId))
+            {
+                silo.Servers.Add(server);
+            }
+
+            await SaveServersAsync();
+            await SaveSilosAsync();
+            return true;
+        }
+
+        public async Task UpdateSiloHealthAsync(string siloId)
+        {
+            var silo = GetSilo(siloId);
+            if (silo == null)
+                return;
+
+            // Update server collection in silo
+            silo.Servers.Clear();
+            silo.Servers.AddRange(GetServersBySilo(siloId));
+
+            // Update health status
+            silo.UpdateHealthStatus();
+
+            await SaveSilosAsync();
+        }
+
+        #endregion
+
+        #region Persistence
+
+        public async Task LoadAsync()
+        {
+            await LoadServersAsync();
+            await LoadSilosAsync();
+            
+            // Rebuild silo-server relationships
+            foreach (var silo in Silos)
+            {
+                silo.Servers.Clear();
+                silo.Servers.AddRange(GetServersBySilo(silo.Id));
+                silo.UpdateHealthStatus();
+            }
+        }
+
+        public async Task SaveAllAsync()
+        {
+            await SaveServersAsync();
+            await SaveSilosAsync();
+        }
+
+        private async Task LoadServersAsync()
+        {
+            try
+            {
+                if (!File.Exists(_serverConfigPath))
+                    return;
+
+                var json = await File.ReadAllTextAsync(_serverConfigPath);
+                var servers = JsonSerializer.Deserialize<List<Server>>(json, JsonOptions);
+                
+                if (servers != null)
+                {
+                    Servers.Clear();
+                    foreach (var server in servers.Where(s => s.IsValid()))
+                    {
+                        Servers.Add(server);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                // Log error but don't throw - start with empty collection
+                System.Diagnostics.Debug.WriteLine($"Error loading servers: {ex.Message}");
+            }
+        }
+
+        private async Task LoadSilosAsync()
+        {
+            try
+            {
+                if (!File.Exists(_siloConfigPath))
+                    return;
+
+                var json = await File.ReadAllTextAsync(_siloConfigPath);
+                var silos = JsonSerializer.Deserialize<List<Silo>>(json, JsonOptions);
+                
+                if (silos != null)
+                {
+                    Silos.Clear();
+                    foreach (var silo in silos.Where(s => s.IsValid()))
+                    {
+                        Silos.Add(silo);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                // Log error but don't throw - start with empty collection
+                System.Diagnostics.Debug.WriteLine($"Error loading silos: {ex.Message}");
+            }
+        }
+
+        private async Task SaveServersAsync()
+        {
+            try
+            {
+                var json = JsonSerializer.Serialize(Servers.ToList(), JsonOptions);
+                await File.WriteAllTextAsync(_serverConfigPath, json);
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error saving servers: {ex.Message}");
+            }
+        }
+
+        private async Task SaveSilosAsync()
+        {
+            try
+            {
+                var json = JsonSerializer.Serialize(Silos.ToList(), JsonOptions);
+                await File.WriteAllTextAsync(_siloConfigPath, json);
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error saving silos: {ex.Message}");
+            }
+        }
+
+        #endregion
+
+        #region Import/Export
+
+        public async Task<bool> ExportServersAsync(string filePath)
+        {
+            try
+            {
+                var exportData = new
+                {
+                    ExportDate = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"),
+                    Version = "1.0",
+                    TotalServers = Servers.Count,
+                    TotalSilos = Silos.Count,
+                    Servers = Servers.ToList(),
+                    Silos = Silos.ToList()
+                };
+
+                var json = JsonSerializer.Serialize(exportData, JsonOptions);
+                await File.WriteAllTextAsync(filePath, json);
+                return true;
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        public async Task<(bool Success, int ImportedServers, int ImportedSilos, string Error)> ImportServersAsync(string filePath, bool replaceExisting = false)
+        {
+            try
+            {
+                if (!File.Exists(filePath))
+                    return (false, 0, 0, "File does not exist");
+
+                var json = await File.ReadAllTextAsync(filePath);
+                using var document = JsonDocument.Parse(json);
+                var root = document.RootElement;
+
+                int importedServers = 0;
+                int importedSilos = 0;
+
+                if (replaceExisting)
+                {
+                    Servers.Clear();
+                    Silos.Clear();
+                }
+
+                // Import silos first
+                if (root.TryGetProperty("silos", out var silosElement))
+                {
+                    var silos = JsonSerializer.Deserialize<List<Silo>>(silosElement.GetRawText(), JsonOptions);
+                    if (silos != null)
+                    {
+                        foreach (var silo in silos.Where(s => s.IsValid()))
+                        {
+                            if (!Silos.Any(s => s.Id == silo.Id))
+                            {
+                                await AddSiloAsync(silo);
+                                importedSilos++;
+                            }
+                        }
+                    }
+                }
+
+                // Import servers
+                if (root.TryGetProperty("servers", out var serversElement))
+                {
+                    var servers = JsonSerializer.Deserialize<List<Server>>(serversElement.GetRawText(), JsonOptions);
+                    if (servers != null)
+                    {
+                        foreach (var server in servers.Where(s => s.IsValid()))
+                        {
+                            if (!Servers.Any(s => s.Id == server.Id))
+                            {
+                                await AddServerAsync(server);
+                                importedServers++;
+                            }
+                        }
+                    }
+                }
+
+                return (true, importedServers, importedSilos, "");
+            }
+            catch (Exception ex)
+            {
+                return (false, 0, 0, ex.Message);
+            }
+        }
+
+        #endregion
+
+        protected virtual void OnPropertyChanged(string propertyName)
+        {
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+        }
+    }
+
+    public class ServerEventArgs : EventArgs
+    {
+        public Server Server { get; }
+        public ServerEventArgs(Server server) => Server = server;
+    }
+
+    public class SiloEventArgs : EventArgs
+    {
+        public Silo Silo { get; }
+        public SiloEventArgs(Silo silo) => Silo = silo;
+    }
+}
